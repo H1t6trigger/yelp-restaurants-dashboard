@@ -27,16 +27,21 @@ if page == "Raw Data Visualization":
     col3.metric("Среднее число отзывов", int(biz["review_count"].mean()))
 
     # Таблица с фильтром
-    st.subheader("Пример данных")
+    st.subheader("Фильтрация данных")
+    st.write("Выберите минимальный рейтинг для отображения ресторанов.")
     min_rating = st.slider("Минимальный рейтинг", 1.0, 5.0, 3.0)
     filtered = biz[biz["stars"] >= min_rating]
     st.dataframe(filtered.head(100))
 
     # Гистограмма рейтингов
+    st.subheader("Распределение рейтингов")
+    st.write("График показывает, как часто встречаются различные рейтинги среди ресторанов.")
     fig = px.histogram(filtered, x="stars", nbins=10)
     st.plotly_chart(fig, width='stretch')
 
     # Географическое распределение
+    st.subheader("Географическое распределение ресторанов")
+    st.write("Точки на карте отображают местоположение ресторанов с цветовой кодировкой по рейтингу.")
     fig_map = px.scatter_map(
         filtered,
         lat="latitude",
@@ -51,40 +56,50 @@ if page == "Raw Data Visualization":
 elif page == "Analysis Results":
     st.title("Результаты анализа")
 
+    # Проверка, есть ли данные
+    if biz is None or biz.empty:
+        st.warning("Данные не загружены. Перейдите на страницу 'Raw Data Visualization' и загрузите файл.")
+        st.stop()  # Останавливает выполнение скрипта на этой странице
+
     # Кластеризация
     n_clusters = st.slider("Количество кластеров", 2, 6, 3)
-    clustered, sil = cluster_restaurants(biz, n_clusters)
-    st.metric("Silhouette Score", round(sil, 3))
-    fig_cluster = px.scatter(
-        clustered,
-        x="review_count",
-        y="stars",
-        color="cluster",
-        title="Кластеры ресторанов"
-    )
-    st.plotly_chart(fig_cluster, width='stretch')
+    try:
+        clustered, sil = cluster_restaurants(biz, n_clusters)
+        st.metric("Silhouette Score", round(sil, 3))
+
+        st.subheader("Кластеризация ресторанов")
+        st.write("График показывает, как рестораны были разделены на кластеры на основе количества отзывов и среднего рейтинга.")
+        fig_cluster = px.scatter(
+            clustered,
+            x="review_count",
+            y="stars",
+            color="cluster",
+            title="Кластеры ресторанов"
+        )
+        st.plotly_chart(fig_cluster, width='stretch')
+    except Exception as e:
+        st.error(f"Ошибка при кластеризации: {e}")
 
     # Регрессия
-    model, r2, X_test, y_test, preds = regression_model(biz)
-    st.metric("R² модели", round(r2, 3))
-    reg_df = pd.DataFrame({
-        "Реальные значения": y_test,
-        "Предсказания": preds
-    })
-    fig_reg = px.scatter(
-        reg_df,
-        x="Реальные значения",
-        y="Предсказания",
-        title="Реальные vs Предсказанные рейтинги"
-    )
-    st.plotly_chart(fig_reg, width='stretch')
+    try:
+        model, r2, X_test, y_test, preds = regression_model(biz)
+        st.metric("R² модели", round(r2, 3))
 
-    st.markdown("""
-    **Выводы:**
-    - Количество отзывов оказывает умеренное влияние на рейтинг ресторана.
-    - Кластеризация позволила выделить группы ресторанов с различными уровнями популярности.
-    - Интерактивные фильтры позволяют исследовать данные в разрезе различных сценариев.
-    """)
+        st.subheader("Результаты регрессии")
+        st.write("Сравнение реальных значений рейтинга с предсказанными моделью.")
+        reg_df = pd.DataFrame({
+            "Реальные значения": y_test,
+            "Предсказания": preds
+        })
+        fig_reg = px.scatter(
+            reg_df,
+            x="Реальные значения",
+            y="Предсказания",
+            title="Реальные vs Предсказанные рейтинги"
+        )
+        st.plotly_chart(fig_reg, width='stretch')
+    except Exception as e:
+        st.error(f"Ошибка при регрессии: {e}")
 
 # --- Страница 3: Column Translations ---
 elif page == "Column Translations":
@@ -108,6 +123,9 @@ elif page == "Column Translations":
         "text_len": "Длина текста",
         "cluster": "Кластер"
     }
+
+    st.subheader("Словарь переводов колонок")
+    st.write("Таблица содержит оригинальные названия колонок и их перевод на русский язык.")
 
     translation_df = pd.DataFrame(
         list(column_translations.items()),
