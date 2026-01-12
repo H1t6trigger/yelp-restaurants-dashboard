@@ -124,7 +124,7 @@ elif page == "Analysis Results":
         st.stop()
 
     # Кластеризация
-    n_clusters = st.slider("Количество кластеров", 2, 6, 3)
+    n_clusters = st.slider("Количество кластеров", 2, 5, 3)
     try:
         clustered, sil = cluster_restaurants(biz, n_clusters)
         st.metric("Silhouette Score", round(sil, 3))
